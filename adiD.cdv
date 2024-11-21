@@ -2,12 +2,22 @@
 #include <stdio.h>
 #include "adi.h"
 #include <sys/time.h>
+#include "adi_utils/adi_utils.h"
 
 
 double 
 second();
 
+# pragma dvm array distribute [ block ][ block ] 
+ DATA_TYPE A[N][N];
 
+# pragma dvm array align ([ i ][ j ] with A [ i ][ j ]) shadow[1:0][1:0]
+ DATA_TYPE X[N][N];
+
+# pragma dvm array align ([ i ][ j ] with A [ i ][ j ]) shadow[1:0][1:0]
+ DATA_TYPE B[N][N];
+
+ 
 #pragma dvm inherit (X,A,B)
 static
 void init_array (int n,//инициализация массивов
@@ -38,11 +48,20 @@ void print_array(int n,
   //     if ((i * N + j) % 20 == 0) fprintf(stderr, "\n");
   //   }
   // fprintf(stderr, "\n");
- //#pragma dvm get_actual(X) 
+ // #pragma dvm get_actual(X) //скопировать из региона в оперативную память
+  double A[n][n];
+
   for (i = 0; i < n; i++)
     for (j = 0; j < n; j++) {
-      printf("%f ", X[i][j]);
+     // printf("%f ", X[i][j]);
+      A[i][j] = (double)X[i][j];
     }
+
+  if (compare_array_with_file(n, A)) {
+    printf("The arrays are identical.\n");
+  } else {
+    printf("The arrays differ.\n");
+  }
 }
 
 #pragma dvm inherit (X,A,B)
@@ -58,9 +77,8 @@ void kernel_adi//метод ADI для каждого шага времени
  
   for (t = 0; t < _PB_TSTEPS; t++)
     {
-  //  #pragma dvm actual(X)
-      #pragma dvm region
-      {
+  //  #pragma dvm region
+    {  
       #pragma dvm parallel ([i1][i2] on A[i1][i2]) across(X[0:0][1:0],B[0:0][1:0])
          for (i1 = 0; i1 < _PB_N; i1++)
           for (i2 = 1; i2 < _PB_N; i2++)//обновление элементов по направлению x
@@ -68,19 +86,18 @@ void kernel_adi//метод ADI для каждого шага времени
                 X[i1][i2] = X[i1][i2] - X[i1][i2-1] * A[i1][i2] / B[i1][i2-1];//·	Обновление значений массива X по направлению x 
                 B[i1][i2] = B[i1][i2] - A[i1][i2] * A[i1][i2] / B[i1][i2-1];//·	Обновление значений массива B по направлению x 
               }
-      }
-           #pragma dvm parallel ([i1] on A[i1][_PB_N-1])
+      
+      #pragma dvm parallel ([i1] on A[i1][_PB_N-1])
          for (i1 = 0; i1 < _PB_N; i1++)//обновление значений на границе по направлению x
                 X[i1][_PB_N-1] = X[i1][_PB_N-1] / B[i1][_PB_N-1];
       
-      int i3=_PB_N-2;
-
-      #pragma dvm parallel ([i1][i2] on A[i1][i2]) shadow_renew(A,B,X) across(X[0:0][1:0])
+     
+      #pragma dvm parallel ([i1][i2] on A[i1][i2]) shadow_renew(A,B) across(X[0:0][1:0])
         for (i1 = 0; i1 < _PB_N; i1++)
-          for (i2 =  _PB_N-2 ; i2 > 0; i2--)
+          for (i2 =  _PB_N-2; i2 > 0; i2--)
                  X[i1][i2] = (X[i1][i2] - X[i1][i2-1] * A[i1][i2-1]) / B[i1][i2-1];
 
-      /*
+      
       #pragma dvm parallel ([i1][i2] on A[i1][i2]) across(X[1:0][0:0],B[1:0][0:0])
         for (i1 = 1; i1 < _PB_N; i1++)
            for (i2 = 0; i2 < _PB_N; i2++)//обновление значений по направлению y
@@ -93,14 +110,13 @@ void kernel_adi//метод ADI для каждого шага времени
          for (i2 = 0; i2 < _PB_N; i2++)//обновление значений на границе по направлению 
                  X[_PB_N-1][i2] = X[_PB_N-1][i2] / B[_PB_N-1][i2];
 
-      #pragma dvm parallel ([i1][i2] on A[i3][i2])  shadow_renew(A,X)
-        for (i1 = 0; i1 < _PB_N-2; i1++)
+      #pragma dvm parallel ([i1][i2] on A[i1][i2])  shadow_renew(A)across(X[1:0][0:0])
+        for (i1 = _PB_N-2; i1 > 0; i1--)
             for (i2 = 0; i2 < _PB_N; i2++)
-                 X[i3][i2] = (X[i3][i2] - X[i3-1][i2] * A[i3-1][i2]) / B[i3][i2];
-      */         
+                 X[i1][i2] = (X[i1][i2] - X[i1-1][i2] * A[i1-1][i2]) / B[i1][i2];
+            
     }   
-    // #pragma dvm get_actual(X)
-    //}
+  }
 }
 
 
@@ -111,16 +127,6 @@ int main(int argc, char** argv)
   int tsteps = TSTEPS;
   double time, time0, time1;
 
-# pragma dvm array distribute [ block ][ block ] 
- DATA_TYPE A[N][N];
-
-# pragma dvm array align ([ i ][ j ] with A [ i ][ j ]) shadow[1:0][1:0]
- DATA_TYPE X[N][N];
-
-# pragma dvm array align ([ i ][ j ] with A [ i ][ j ]) shadow[1:0][1:0]
- DATA_TYPE B[N][N];
-
-
   init_array (n, X, A, B);
 
   time0 = second();
@@ -128,9 +134,9 @@ int main(int argc, char** argv)
   time1 = second();
 
   time = time1 - time0;
-  printf("\ntime=%f\n\n\n", time);
+  printf("\nn=%d\n", n);
   print_array(n, X);
-  printf("\n\n\ntime=%f\n", time);
+  printf("\ntime=%f\n", time);
 
   return 0;
 }
