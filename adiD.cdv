@@ -48,7 +48,7 @@ void print_array(int n,
   //     if ((i * N + j) % 20 == 0) fprintf(stderr, "\n");
   //   }
   // fprintf(stderr, "\n");
- // #pragma dvm get_actual(X) //скопировать из региона в оперативную память
+  //#pragma dvm get_actual(X) //скопировать из региона в оперативную память
   double A[n][n];
 
   for (i = 0; i < n; i++)
@@ -77,7 +77,8 @@ void kernel_adi//метод ADI для каждого шага времени
  
   for (t = 0; t < _PB_TSTEPS; t++)
     {
-  //  #pragma dvm region
+    //#pragma dvm actual(X,A,B)
+    //#pragma dvm region
     {  
       #pragma dvm parallel ([i1][i2] on A[i1][i2]) across(X[0:0][1:0],B[0:0][1:0])
          for (i1 = 0; i1 < _PB_N; i1++)

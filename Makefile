@@ -13,7 +13,7 @@ compile_init:
 compile_oacc:
 	ompcc -o himenoOACC himenoOACC.c
 compile_xmp:
-	xmpcc -o himenoXMP himenoXMP.c
+	xmpcc -o adiXMP adiXMP2.c adi_utils/adi_utils.c
 compile_xacc:
 	xmpcc -xacc -o himenoXACC himenoXACC.c
 

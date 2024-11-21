@@ -63,15 +63,16 @@ static void kernel_adi//метод ADI для каждого шага време
 
     for (t = 0; t < tsteps; t++)
     {
-        #pragma xmp reflect(X,B)
-        #pragma xmp loop on t [i1][i2]//работает
+       // #pragma xmp reflect(X,B)
+        #pragma xmp loop on t [i1][i2] //работает
         for (i1 = 0; i1 < _PB_N; i1++)
             for (i2 = 1; i2 < _PB_N; i2++)//обновление элементов по направлению x
             {
+                
                 X[i1][i2] = X[i1][i2] - X[i1][i2-1] * A[i1][i2] / B[i1][i2-1];//·	Обновление значений массива X по направлению x 
                 B[i1][i2] = B[i1][i2] - A[i1][i2] * A[i1][i2] / B[i1][i2-1];//·	Обновление значений массива B по направлению x 
             }
-
+#pragma xmp reflect(X,B)
      //   #pragma xmp loop on t [i1][i2]//не нравиться измерение шаблона
         for (i1 = 0; i1 < _PB_N; i1++)//обновление значений на границе по направлению x
     //          for( i2=_PB_N-1; i2<=_PB_N-1;i2++) 
@@ -84,7 +85,7 @@ static void kernel_adi//метод ADI для каждого шага време
             for (i2 = 0; i2 < _PB_N-2; i2++)
                 X[i1][_PB_N-i2-2] = (X[i1][_PB_N-2-i2] - X[i1][_PB_N-2-i2-1] * A[i1][_PB_N-i2-3]) / B[i1][_PB_N-3-i2];
 
-        #pragma xmp reflect(B,X)
+      //  #pragma xmp reflect(B,X)
         #pragma xmp loop on t [i1][i2]   //работает
         for (i1 = 1; i1 < _PB_N; i1++)
             for (i2 = 0; i2 < _PB_N; i2++)//обновление значений по направлению y
