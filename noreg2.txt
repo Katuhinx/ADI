@@ -1,0 +1,223 @@
+Processor system=1*1*1*1
+Statistics has been accumulated on DVM-system version 5.0, platform gnu-truenas
+Analyzer is executing on DVM-system version 5.0, platform gnu-truenas
+-------------------------------------------------------------------------
+INTERVAL ( NLINE=15 SOURCE=adiD.cdv ) LEVEL=0  EXE_COUNT=1
+--- The main characteristics --- 
+Parallelization efficiency      1.0000 
+Execution time                  2.3852 
+Processors                           1
+Threads amount                       1
+Total time                      2.3852
+Productive time                 2.3852 ( CPU= 2.3617 Sys= 0.0235 I/O= 0.0000 )
+Overlap                         0.0002
+                  Nop    Overlap 
+Shadow             90     0.0002 
+--- The comparative characteristics --- 
+                              Tmin N proc      Tmax N proc      Tmid
+Overlap                     0.0002     1     0.0002     1     0.0002 
+Execution time              2.3852     1     2.3852     1     2.3852 
+User CPU time               2.3617     1     2.3617     1     2.3617 
+Sys. CPU time               0.0235     1     0.0235     1     0.0235 
+Processors                       1     1          1     1          1 
+                       Overlap  
+Shadow          Tmin    0.0002     1 
+Shadow          Tmax    0.0002     1 
+Shadow          Tmid    0.0002       
+--- The execution characteristics --- 
+                                1 
+Overlap                    0.0002 
+Execution time             2.3852 
+User CPU time              2.3617 
+Sys. CPU time              0.0235 
+Processors                      1 
+           Overlap                
+Shadow                     0.0002 
+
+
+-------------------------------------------------------------------------
+INTERVAL ( NLINE=77 SOURCE=adiD.cdv ) LEVEL=1 USER EXE_COUNT=10 EXPR=0
+--- The main characteristics --- 
+Parallelization efficiency      1.0000 
+Execution time                  1.1030 
+Processors                           1
+Threads amount                       1
+Total time                      1.1030
+Productive time                 1.1030 ( CPU= 1.1027 Sys= 0.0003 I/O= 0.0000 )
+Overlap                         0.0001
+                  Nop    Overlap 
+Shadow             20     0.0001 
+--- The comparative characteristics --- 
+                              Tmin N proc      Tmax N proc      Tmid
+Overlap                     0.0001     1     0.0001     1     0.0001 
+Execution time              1.1030     1     1.1030     1     1.1030 
+User CPU time               1.1027     1     1.1027     1     1.1027 
+Sys. CPU time               0.0003     1     0.0003     1     0.0003 
+Processors                       1     1          1     1          1 
+                       Overlap  
+Shadow          Tmin    0.0001     1 
+Shadow          Tmax    0.0001     1 
+Shadow          Tmid    0.0001       
+--- The execution characteristics --- 
+                                1 
+Overlap                    0.0001 
+Execution time             1.1030 
+User CPU time              1.1027 
+Sys. CPU time              0.0003 
+Processors                      1 
+           Overlap                
+Shadow                     0.0001 
+
+
+-------------------------------------------------------------------------
+INTERVAL ( NLINE=90 SOURCE=adiD.cdv ) LEVEL=1 USER EXE_COUNT=10 EXPR=0
+--- The main characteristics --- 
+Parallelization efficiency      1.0000 
+Execution time                  0.0037 
+Processors                           1
+Threads amount                       1
+Total time                      0.0037
+Productive time                 0.0037 ( CPU= 0.0036 Sys= 0.0001 I/O= 0.0000 )
+--- The comparative characteristics --- 
+                              Tmin N proc      Tmax N proc      Tmid
+Execution time              0.0037     1     0.0037     1     0.0037 
+User CPU time               0.0036     1     0.0036     1     0.0036 
+Sys. CPU time               0.0001     1     0.0001     1     0.0001 
+Processors                       1     1          1     1          1 
+--- The execution characteristics --- 
+                                1 
+Execution time             0.0037 
+User CPU time              0.0036 
+Sys. CPU time              0.0001 
+Processors                      1 
+
+
+-------------------------------------------------------------------------
+INTERVAL ( NLINE=101 SOURCE=adiD.cdv ) LEVEL=1 USER EXE_COUNT=10 EXPR=0
+--- The main characteristics --- 
+Parallelization efficiency      1.0000 
+Execution time                  0.3250 
+Processors                           1
+Threads amount                       1
+Total time                      0.3250
+Productive time                 0.3250 ( CPU= 0.3248 Sys= 0.0002 I/O= 0.0000 )
+Overlap                         0.0000
+                  Nop    Overlap 
+Shadow             30     0.0000 
+--- The comparative characteristics --- 
+                              Tmin N proc      Tmax N proc      Tmid
+Overlap                     0.0000     1     0.0000     1     0.0000 
+Execution time              0.3250     1     0.3250     1     0.3250 
+User CPU time               0.3248     1     0.3248     1     0.3248 
+Sys. CPU time               0.0002     1     0.0002     1     0.0002 
+Processors                       1     1          1     1          1 
+                       Overlap  
+Shadow          Tmin    0.0000     1 
+Shadow          Tmax    0.0000     1 
+Shadow          Tmid    0.0000       
+--- The execution characteristics --- 
+                                1 
+Overlap                    0.0000 
+Execution time             0.3250 
+User CPU time              0.3248 
+Sys. CPU time              0.0002 
+Processors                      1 
+           Overlap                
+Shadow                     0.0000 
+
+
+-------------------------------------------------------------------------
+INTERVAL ( NLINE=111 SOURCE=adiD.cdv ) LEVEL=1 USER EXE_COUNT=10 EXPR=0
+--- The main characteristics --- 
+Parallelization efficiency      1.0000 
+Execution time                  0.3760 
+Processors                           1
+Threads amount                       1
+Total time                      0.3760
+Productive time                 0.3760 ( CPU= 0.3758 Sys= 0.0002 I/O= 0.0000 )
+Overlap                         0.0001
+                  Nop    Overlap 
+Shadow             20     0.0001 
+--- The comparative characteristics --- 
+                              Tmin N proc      Tmax N proc      Tmid
+Overlap                     0.0001     1     0.0001     1     0.0001 
+Execution time              0.3760     1     0.3760     1     0.3760 
+User CPU time               0.3758     1     0.3758     1     0.3758 
+Sys. CPU time               0.0002     1     0.0002     1     0.0002 
+Processors                       1     1          1     1          1 
+                       Overlap  
+Shadow          Tmin    0.0001     1 
+Shadow          Tmax    0.0001     1 
+Shadow          Tmid    0.0001       
+--- The execution characteristics --- 
+                                1 
+Overlap                    0.0001 
+Execution time             0.3760 
+User CPU time              0.3758 
+Sys. CPU time              0.0002 
+Processors                      1 
+           Overlap                
+Shadow                     0.0001 
+
+
+-------------------------------------------------------------------------
+INTERVAL ( NLINE=124 SOURCE=adiD.cdv ) LEVEL=1 USER EXE_COUNT=10 EXPR=0
+--- The main characteristics --- 
+Parallelization efficiency      1.0000 
+Execution time                  0.0003 
+Processors                           1
+Threads amount                       1
+Total time                      0.0003
+Productive time                 0.0003 ( CPU= 0.0002 Sys= 0.0001 I/O= 0.0000 )
+--- The comparative characteristics --- 
+                              Tmin N proc      Tmax N proc      Tmid
+Execution time              0.0003     1     0.0003     1     0.0003 
+User CPU time               0.0002     1     0.0002     1     0.0002 
+Sys. CPU time               0.0001     1     0.0001     1     0.0001 
+Processors                       1     1          1     1          1 
+--- The execution characteristics --- 
+                                1 
+Execution time             0.0003 
+User CPU time              0.0002 
+Sys. CPU time              0.0001 
+Processors                      1 
+
+
+-------------------------------------------------------------------------
+INTERVAL ( NLINE=135 SOURCE=adiD.cdv ) LEVEL=1 USER EXE_COUNT=10 EXPR=0
+--- The main characteristics --- 
+Parallelization efficiency      1.0000 
+Execution time                  0.3042 
+Processors                           1
+Threads amount                       1
+Total time                      0.3042
+Productive time                 0.3042 ( CPU= 0.3041 Sys= 0.0001 I/O= 0.0000 )
+Overlap                         0.0000
+                  Nop    Overlap 
+Shadow             20     0.0000 
+--- The comparative characteristics --- 
+                              Tmin N proc      Tmax N proc      Tmid
+Overlap                     0.0000     1     0.0000     1     0.0000 
+Execution time              0.3042     1     0.3042     1     0.3042 
+User CPU time               0.3041     1     0.3041     1     0.3041 
+Sys. CPU time               0.0001     1     0.0001     1     0.0001 
+Processors                       1     1          1     1          1 
+                       Overlap  
+Shadow          Tmin    0.0000     1 
+Shadow          Tmax    0.0000     1 
+Shadow          Tmid    0.0000       
+--- The execution characteristics --- 
+                                1 
+Overlap                    0.0000 
+Execution time             0.3042 
+User CPU time              0.3041 
+Sys. CPU time              0.0001 
+Processors                      1 
+           Overlap                
+Shadow                     0.0000 
+
+
+-------------------------------------------------------------------------
+Name (number) and performance time of processors
+testuser(1) 0.479667
+min - testuser(1) 0.479667; max - testuser(1) 0.479667; mid - 0.479667
