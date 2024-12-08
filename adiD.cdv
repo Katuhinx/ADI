@@ -1,0 +1,192 @@
+
+#include <stdio.h>
+#include "adi.h"
+#include <sys/time.h>
+#include "adi_utils/adi_utils.h"
+
+double second();
+
+ double C[N][N];
+
+#pragma dvm array distribute [block][block] 
+DATA_TYPE A[N][N];
+
+#pragma dvm array align ([i][j] with A [i][j]) shadow[1:0][1:0]
+DATA_TYPE X[N][N];
+
+#pragma dvm array align ([i][j] with A [i][j]) shadow[1:0][1:0]
+DATA_TYPE B[N][N];
+ 
+#pragma dvm inherit (X,A,B)
+static void init_array ( //Инициализация массивов
+  int n,
+  DATA_TYPE X[N][N],
+  DATA_TYPE A[N][N],
+  DATA_TYPE B[N][N]
+) {
+  int i, j;
+  #pragma dvm parallel ([i][j] on A[i][j])
+  for (i = 0; i < n; i++)
+    for (j = 0; j < n; j++) 
+    {
+      X[i][j] = ((DATA_TYPE) i*(j+1) + 1) / n;
+      A[i][j] = ((DATA_TYPE) i*(j+2) + 2) / n;
+      B[i][j] = ((DATA_TYPE) i*(j+3) + 3) / n;
+    }
+}
+
+#pragma dvm inherit (X)
+static void print_array(int n, double X[N][N]) {
+   int i, j;
+
+  // for (i = 0; i < n; i++)
+  //   for (j = 0; j < n; j++) {
+  //     fprintf(stderr, DATA_PRINTF_MODIFIER, X[i][j]);
+  //     if ((i * N + j) % 20 == 0) fprintf(stderr, "\n");
+  //   }
+  // fprintf(stderr, "\n");
+  #pragma dvm get_actual(X) //скопировать из региона в оперативную память
+ 
+ //#pragma dvm region
+ {
+   #pragma dvm parallel ([i][j] on X[i][j]) remote_access(X[i][j])//?
+    for (i = 0; i < n; i++) {
+    for (j = 0; j < n; j++) { 
+    //  #pragma dvm remote_access(X[i][j])
+      C[i][j] = (double)X[i][j];
+    }
+  }
+ }
+//  // printf("%f ", X[0][0]);
+
+  if (compare_array_with_file(n, C)) {
+    printf("The arrays are identical.\n");
+  } else {
+    printf("The arrays different.\n");
+  }
+}
+
+#pragma dvm inherit (X,A,B)
+static void kernel_adi( //Метод ADI для каждого шага времени
+  int tsteps, //Количество шагов времени, которое необходимо выполнить для решения уравнения
+  int n, //Размер массива, который используется для хранения значений функции
+  DATA_TYPE X[N][N], //Массив, который хранит значения функции в текущий момент времени
+  DATA_TYPE A[N][N], //Массив, который хранит коэффициенты уравнения по направлению x
+  DATA_TYPE B[N][N] //Массив, который хранит коэффициенты уравнения по направлению y
+) {
+  int t, i1, i2;
+ 
+  for (t = 0; t < tsteps; t++) {
+  #pragma dvm actual(X,A,B)
+  #pragma dvm interval
+    #pragma dvm region
+    {  
+      #pragma dvm parallel ([i1][i2] on X[i1][i2]) across(X[0:0][1:0],B[0:0][1:0])
+        for (i1 = 0; i1 < n; i1++)
+          for (i2 = 1; i2 < n; i2++) { //обновление элементов по направлению x
+            X[i1][i2] = X[i1][i2] - X[i1][i2-1] * A[i1][i2] / B[i1][i2-1]; //Обновление значений массива X по направлению x 
+            B[i1][i2] = B[i1][i2] - A[i1][i2] * A[i1][i2] / B[i1][i2-1]; //Обновление значений массива B по направлению x 
+          }
+    }
+    #pragma dvm endinterval
+
+
+    #pragma dvm interval
+    #pragma dvm region
+    {  
+
+      #pragma dvm parallel ([i1] on X[i1][_PB_N-1])
+        for (i1 = 0; i1 < _PB_N; i1++)//обновление значений на границе по направлению x
+          X[i1][_PB_N-1] = X[i1][_PB_N-1] / B[i1][_PB_N-1];
+    }
+    #pragma dvm endinterval
+
+
+    #pragma dvm interval
+    #pragma dvm region
+    {   
+      #pragma dvm parallel ([i1][i2] on X[i1][i2]) shadow_renew(A,B) across(X[0:0][1:0])
+        for (i1 = 0; i1 < _PB_N; i1++)
+          for (i2 =  _PB_N-2; i2 > 0; i2--)
+            X[i1][i2] = (X[i1][i2] - X[i1][i2-1] * A[i1][i2-1]) / B[i1][i2-1];
+    }
+    #pragma dvm endinterval
+
+    #pragma dvm interval
+    #pragma dvm region
+    {  
+
+      #pragma dvm parallel ([i1][i2] on X[i1][i2]) across(X[1:0][0:0],B[1:0][0:0])
+        for (i1 = 1; i1 < _PB_N; i1++)
+        for (i2 = 0; i2 < _PB_N; i2++){//обновление значений по направлению y
+            X[i1][i2] = X[i1][i2] - X[i1-1][i2] * A[i1][i2] / B[i1-1][i2];
+            B[i1][i2] = B[i1][i2] - A[i1][i2] * A[i1][i2] / B[i1-1][i2];
+          }
+    }
+    #pragma dvm endinterval
+
+    #pragma dvm interval
+    #pragma dvm region
+    {  
+
+      #pragma dvm parallel ([i2] on X[_PB_N-1][i2])
+        for (i2 = 0; i2 < _PB_N; i2++)//обновление значений на границе по направлению 
+          X[_PB_N-1][i2] = X[_PB_N-1][i2] / B[_PB_N-1][i2];
+    }
+    #pragma dvm endinterval
+
+
+    #pragma dvm interval
+    #pragma dvm region
+    {  
+      #pragma dvm parallel ([i1][i2] on X[i1][i2]) shadow_renew(A) across(X[1:0][0:0])//A array
+          for (i1 = _PB_N-2; i1 > 0; i1--)
+          for (i2 = 0; i2 < _PB_N; i2++)
+            X[i1][i2] = (X[i1][i2] - X[i1-1][i2] * A[i1-1][i2]) / B[i1][i2];
+            
+    }   
+    #pragma dvm endinterval
+    }
+  }
+
+
+int main(int argc, char** argv) {
+  int n = N;
+  int tsteps = TSTEPS;
+  double time, time0, time1;
+
+  init_array (n, X, A, B);
+
+  time0 = second();
+  kernel_adi (tsteps, n, X, A, B);
+  time1 = second();
+
+  time = time1 - time0;
+
+  printf("\nn=%d\n", n);
+
+  print_array(n, X);
+
+  printf("\ntime=%f\n", time);
+
+  return 0;
+}
+
+double second() {
+  struct timeval tm;
+  double t;
+
+  static int base_sec = 0, base_usec = 0;
+
+  gettimeofday(&tm, NULL);
+  
+  if(base_sec == 0 && base_usec == 0) {
+    base_sec = tm.tv_sec;
+    base_usec = tm.tv_usec;
+    t = 0.0;
+  } else {
+    t = (double)(tm.tv_sec-base_sec) + (double)(tm.tv_usec-base_usec) / 1.0e6 ;
+  }
+
+  return t;
+}
