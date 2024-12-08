@@ -6,7 +6,9 @@ Alternating Direction Implicit (ADI)который является числен
 1. adi.c - исходный код на языке C
 2. adi.h - заголовочный файл
 3. adiD.cdv - код, распараллеленный с помощью DVMH
-4. adiXMP1 - начальный  код для XcalableMP
-5. adiXMP2 - код, распаралелленый с помощью XcalableMP
+4. adiXMP1 - начальный  код для XcalableMP(в процессе)
+5. adiXMP2 - код, распаралелленый с помощью XcalableMP(в процессе)
 6. adi_utils.h/adi_utils.c - вспомогательная библиотека для сравнения массивов
+7. reg2.txt - результаты работы циклов adiD.cdv
+8. noreg2.txt - результаты работы циклов adiD.cdv с использованием опции -noH
    
