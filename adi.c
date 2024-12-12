@@ -29,10 +29,7 @@ void init_array (int n,//инициализация массивов
     }
 }
 
-static
-void print_array(int n,
-   DATA_TYPE X[N][N])
-{
+static void print_array(int n, DATA_TYPE X[N][N]) {
   int i, j;
 
   // for (i = 0; i < n; i++)
@@ -58,43 +55,36 @@ void kernel_adi//метод ADI для каждого шага времени
 {
   int t, i1, i2;
 
-  for (t = 0; t < _PB_TSTEPS; t++)
-    {
-      for (i1 = 0; i1 < _PB_N; i1++)
-        for (i2 = 1; i2 < _PB_N; i2++)//обновление элементов по направлению x
-          {
-             X[i1][i2] = X[i1][i2] - X[i1][i2-1] * A[i1][i2] / B[i1][i2-1];//·	Обновление значений массива X по направлению x 
-             B[i1][i2] = B[i1][i2] - A[i1][i2] * A[i1][i2] / B[i1][i2-1];//·	Обновление значений массива B по направлению x 
-          }
+  for (t = 0; t < _PB_TSTEPS; t++) {
+    for (i1 = 0; i1 < _PB_N; i1++)
+      for (i2 = 1; i2 < _PB_N; i2++) { //обновление элементов по направлению x
+        X[i1][i2] = X[i1][i2] - X[i1][i2-1] * A[i1][i2] / B[i1][i2-1]; //Обновление значений массива X по направлению x 
+        B[i1][i2] = B[i1][i2] - A[i1][i2] * A[i1][i2] / B[i1][i2-1]; //Обновление значений массива B по направлению x 
+      }
 
-      for (i1 = 0; i1 < _PB_N; i1++)//обновление значений на границе по направлению x
-            X[i1][_PB_N-1] = X[i1][_PB_N-1] / B[i1][_PB_N-1];
+    for (i1 = 0; i1 < _PB_N; i1++)//обновление значений на границе по направлению x
+      X[i1][_PB_N-1] = X[i1][_PB_N-1] / B[i1][_PB_N-1];
 
-     for (i1 = 0; i1 < _PB_N; i1++)
-        for (i2 = 0; i2 < _PB_N-2; i2++)
-            X[i1][_PB_N-i2-2] = (X[i1][_PB_N-2-i2] - X[i1][_PB_N-2-i2-1] * A[i1][_PB_N-i2-3]) / B[i1][_PB_N-3-i2];
+    for (i1 = 0; i1 < _PB_N; i1++)
+      for (i2 = 0; i2 < _PB_N-2; i2++)
+        X[i1][_PB_N-i2-2] = (X[i1][_PB_N-2-i2] - X[i1][_PB_N-2-i2-1] * A[i1][_PB_N-i2-3]) / B[i1][_PB_N-3-i2];
+  
+    for (i1 = 1; i1 < _PB_N; i1++)
+      for (i2 = 0; i2 < _PB_N; i2++) { //обновление значений по направлению y
+        X[i1][i2] = X[i1][i2] - X[i1-1][i2] * A[i1][i2] / B[i1-1][i2];
+        B[i1][i2] = B[i1][i2] - A[i1][i2] * A[i1][i2] / B[i1-1][i2];
+      }
 
-          
-      for (i1 = 1; i1 < _PB_N; i1++)
-        for (i2 = 0; i2 < _PB_N; i2++)//обновление значений по направлению y
-          {
-            X[i1][i2] = X[i1][i2] - X[i1-1][i2] * A[i1][i2] / B[i1-1][i2];
-            B[i1][i2] = B[i1][i2] - A[i1][i2] * A[i1][i2] / B[i1-1][i2];
-          }
+    for (i2 = 0; i2 < _PB_N; i2++)//обновление значений на границе по направлению 
+      X[_PB_N-1][i2] = X[_PB_N-1][i2] / B[_PB_N-1][i2];
 
-      for (i2 = 0; i2 < _PB_N; i2++)//обновление значений на границе по направлению 
-            X[_PB_N-1][i2] = X[_PB_N-1][i2] / B[_PB_N-1][i2];
-
-      for (i1 = 0; i1 < _PB_N-2; i1++)
-        for (i2 = 0; i2 < _PB_N; i2++)
-            X[_PB_N-2-i1][i2] = (X[_PB_N-2-i1][i2] - X[_PB_N-i1-3][i2] * A[_PB_N-3-i1][i2]) / B[_PB_N-2-i1][i2];
-         
-    }
+    for (i1 = 0; i1 < _PB_N-2; i1++)
+      for (i2 = 0; i2 < _PB_N; i2++)
+        X[_PB_N-2-i1][i2] = (X[_PB_N-2-i1][i2] - X[_PB_N-i1-3][i2] * A[_PB_N-3-i1][i2]) / B[_PB_N-2-i1][i2]; 
+  }
 }
 
-int main(int argc, char** argv)
-{
-
+int main(int argc, char** argv) {
   int n = N;
   int tsteps = TSTEPS;
 
@@ -106,23 +96,18 @@ int main(int argc, char** argv)
   kernel_adi (tsteps, n, X, A, B);
   time1 = second();
 
-
-
   time = time1 - time0;
 
   printf("\nn=%d\n", n);
 
-  save_array_to_file(n, X);
+  save_result(n, X);
 
   printf("\n\n\ntime=%f\n", time);
 
   return 0;
 }
 
-double
-second()
-{
-
+double second() {
   struct timeval tm;
   double t;
 
@@ -130,14 +115,12 @@ second()
 
   gettimeofday(&tm, NULL);
   
-  if(base_sec == 0 && base_usec == 0)
-    {
-      base_sec = tm.tv_sec;
-      base_usec = tm.tv_usec;
-      t = 0.0;
+  if(base_sec == 0 && base_usec == 0){
+    base_sec = tm.tv_sec;
+    base_usec = tm.tv_usec;
+    t = 0.0;
   } else {
-    t = (double) (tm.tv_sec-base_sec) + 
-      ((double) (tm.tv_usec-base_usec))/1.0e6 ;
+    t = (double)(tm.tv_sec-base_sec) + (double)(tm.tv_usec-base_usec) / 1.0e6 ;
   }
 
   return t ;
