@@ -1,7 +1,0 @@
-{
-    "files.associations": {
-        "*.cdv": "c",
-        "stdio.h": "c",
-        "adi.h": "c"
-    }
-}
