@@ -11,4 +11,5 @@ Alternating Direction Implicit (ADI)который является числен
 6. adi_utils.h/adi_utils.c - вспомогательная библиотека для сравнения массивов
 7. reg2.txt - результаты работы циклов adiD.cdv
 8. noreg2.txt - результаты работы циклов adiD.cdv с использованием опции -noH
+9. adi_mpi.c - код, распаралелленный с помощью MPI
    
