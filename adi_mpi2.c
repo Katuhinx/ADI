@@ -18,19 +18,7 @@ int local_rows;
 static void init_array(int n, DATA_TYPE **X, DATA_TYPE **A, DATA_TYPE **B, int rank, int size)
 {
     int i, j;
-    // int chunk_rows = n / size;     // Количество строк, обрабатываемых каждым процессом
-    // int chunk_cols = n / size;     // Количество столбцов, обрабатываемых каждым процессом
-    // int remainder_rows = n % size; // Остаток строк
-    // int remainder_cols = n % size; // Остаток столбцов
 
-    // int start_row = rank * chunk_rows + (rank < remainder_rows ? rank : remainder_rows);
-    // int start_col = rank * chunk_cols + (rank < remainder_cols ? rank : remainder_cols);
-    // int local_rows = chunk_rows + (rank < remainder_rows ? 1 : 0);
-    // int local_cols = chunk_cols + (rank < remainder_cols ? 1 : 0);
-
-    // int end_row = start_row + chunk_rows + (rank < remainder_rows ? 1 : 0);
-    // Инициализируем динамические массивы
-    // Инициализация локальной части массивов
     for (i = 0; i < local_rows; i++)
     {
         for (j = 0; j < n; j++)
@@ -113,6 +101,13 @@ static void print_array(int n, DATA_TYPE **X, int rank, int size)
 static void kernel_adi(int tsteps, int n, DATA_TYPE **X, DATA_TYPE **A, DATA_TYPE **B, int rank, int size, int local_rows)
 {
     int t, i1, i2;
+    int chunk = n / size;     // Базовое количество строк на процесс
+    int remainder = n % size; // Остаток строк для первых процессов
+    int start_row = rank * chunk + (rank < remainder ? rank : remainder);
+    DATA_TYPE *top_X = (DATA_TYPE *)malloc(n * sizeof(DATA_TYPE));
+    DATA_TYPE *top_A = (DATA_TYPE *)malloc(n * sizeof(DATA_TYPE));
+    DATA_TYPE *top_B = (DATA_TYPE *)malloc(n * sizeof(DATA_TYPE));
+    MPI_Status status;
 
     for (t = 0; t < tsteps; t++)
     {
@@ -126,83 +121,113 @@ static void kernel_adi(int tsteps, int n, DATA_TYPE **X, DATA_TYPE **A, DATA_TYP
                 // printf("Rank %d: start_i1 = %d, end_i1 = %d, local_rows = %d, current_row = %d\n", rank, start_i1, end_i1, local_rows, i1);
             }
 
-            MPI_Barrier(MPI_COMM_WORLD);
+            // MPI_Barrier(MPI_COMM_WORLD);
         }
-    
 
-    // Обновление X[i1][n-1] для локальных строк
-    for ( i1 = 0; i1 < local_rows; i1++) 
-       X[i1][n - 1] = X[i1][n - 1] / B[i1][n - 1];
-    
-    
-    // Обратная подстановка для локальных строк
-    for (int i1 = 0; i1 < local_rows; i1++) {
-        for (i2 = 0; i2 < n - 2; i2++) {
-            int idx = n - i2 - 2;
-            X[i1][idx] = (X[i1][idx] - X[i1][idx - 1] * A[i1][idx - 1]) / B[i1][idx - 1];
+        // Обновление X[i1][n-1] для локальных строк
+        for (i1 = 0; i1 < local_rows; i1++)
+            X[i1][n - 1] = X[i1][n - 1] / B[i1][n - 1];
+
+        // Обратная подстановка для локальных строк
+        for (int i1 = 0; i1 < local_rows; i1++)
+        {
+            for (i2 = 0; i2 < n - 2; i2++)
+            {
+                int idx = n - i2 - 2;
+                X[i1][idx] = (X[i1][idx] - X[i1][idx - 1] * A[i1][idx - 1]) / B[i1][idx - 1];
+            }
         }
+
+        // Вертикальные обновления с обменом данными между процессами
+
+        if (size > 1 && rank > 0)
+        {
+            MPI_Recv(top_X, n, MPI_DOUBLE, rank - 1, 0, MPI_COMM_WORLD, &status);
+            MPI_Recv(top_B, n, MPI_DOUBLE, rank - 1, 1, MPI_COMM_WORLD, &status);
+        }
+
+        for (i1 = 0; i1 < local_rows; i1++)
+            if (i1 == 0)
+            {
+                if (rank > 0)
+                {
+                    for (i2 = 0; i2 < n; i2++)
+                    {
+                        X[i1][i2] = X[i1][i2] - top_X[i2] * A[i1][i2] / top_B[i2];
+                        B[i1][i2] = B[i1][i2] - A[i1][i2] * A[i1][i2] / top_B[i2];
+                    }
+                }
+            }
+            else
+            {
+                for (i2 = 0; i2 < n; i2++)
+                {
+                    X[i1][i2] = X[i1][i2] - X[i1 - 1][i2] * A[i1][i2] / B[i1 - 1][i2];
+                    B[i1][i2] = B[i1][i2] - A[i1][i2] * A[i1][i2] / B[i1 - 1][i2];
+                }
+
+                if (i1 == local_rows - 1)
+                {
+                    if (size > 1 && rank < size - 1)
+                    {
+                        MPI_Send(X[local_rows - 1], n, MPI_DOUBLE, rank + 1, 0, MPI_COMM_WORLD);
+                        MPI_Send(B[local_rows - 1], n, MPI_DOUBLE, rank + 1, 1, MPI_COMM_WORLD);
+                    }
+                }
+            }
+
+        // Обновление последней строки
+        if (rank == size - 1)
+        {
+            for (i2 = 0; i2 < n; i2++)
+            {
+                X[local_rows - 1][i2] = X[local_rows - 1][i2] / B[local_rows - 1][i2];
+            }
+        }
+
+        // Обратная подстановка для вертикальных обновлений с обменом данными
+
+        if (size > 1 && rank > 0)
+        {
+            MPI_Recv(top_X, n, MPI_DOUBLE, rank - 1, 3, MPI_COMM_WORLD, &status);
+            MPI_Recv(top_A, n, MPI_DOUBLE, rank - 1, 4, MPI_COMM_WORLD, &status);
+        }
+
+        for (i1 = local_rows - 1; i1 >= 0; i1--)
+        {
+            if (i1 == (local_rows - 1) && size > 1 && rank < size - 1)
+            {
+                printf("Rank %d: Sending data to rank %d\n", rank, rank + 1);
+                MPI_Send(X[local_rows - 1], n, MPI_DOUBLE, rank + 1, 3, MPI_COMM_WORLD);
+                MPI_Send(A[local_rows - 1], n, MPI_DOUBLE, rank + 1, 4, MPI_COMM_WORLD);
+            }
+
+            if (i1 == 0)
+            {
+                if (rank > 0)
+                {
+                    for (i2 = 0; i2 < n; i2++)
+                    {
+                        X[i1][i2] = (X[i1][i2] - top_X[i2] * top_A[i2]) / B[i1][i2];
+                    }
+                }
+            }
+            else
+            {
+                if (rank < size - 1 || ((rank == size - 1) && i1 <= local_rows - 2))
+                {
+                    for (i2 = 0; i2 < n; i2++)
+                    {
+                        X[i1][i2] = (X[i1][i2] - X[i1 - 1][i2] * A[i1 - 1][i2]) / B[i1][i2];
+                    }
+                }
+            }
+        }
+        MPI_Barrier(MPI_COMM_WORLD);
     }
-
-    // // Вертикальные обновления с обменом данными между процессами
-    // for (int i1 = 0; local_i1 < local_rows; local_i1++) {
-    //     int global_i1 = start_i1 + local_i1;  // Преобразование локального индекса в глобальный
-
-    //     if (global_i1 == 0) continue; // Пропустить первую строку
-
-    //     // Если это не первый процесс, получаем данные от предыдущего процесса
-    //     if (rank != 0 && local_i1 == 0) {
-    //         printf("Rank %d: Receiving data from rank %d\n", rank, rank - 1);
-    //         MPI_Recv(X[local_i1 - 1], n, MPI_DOUBLE, rank - 1, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-    //         MPI_Recv(B[local_i1 - 1], n, MPI_DOUBLE, rank - 1, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-    //     }
-
-    //     for (i2 = 0; i2 < n; i2++) {
-    //         X[local_i1][i2] = X[local_i1][i2] - X[local_i1 - 1][i2] * A[local_i1][i2] / B[local_i1 - 1][i2];
-    //         B[local_i1][i2] = B[local_i1][i2] - A[local_i1][i2] * A[local_i1][i2] / B[local_i1 - 1][i2];
-    //     }
-
-    //     // Если это не последний процесс, отправляем данные следующему процессу
-    //     if (rank != size - 1 && local_i1 == local_rows - 1) {
-    //         printf("Rank %d: Sending data to rank %d\n", rank, rank + 1);
-    //         MPI_Send(X[local_i1], n, MPI_DOUBLE, rank + 1, 0, MPI_COMM_WORLD);
-    //         MPI_Send(B[local_i1], n, MPI_DOUBLE, rank + 1, 1, MPI_COMM_WORLD);
-    //     }
-    // }
-
-    // // Синхронизация процессов перед обновлением последней строки
-    // MPI_Barrier(MPI_COMM_WORLD);
-
-    // // Обновление последней строки только последним процессом
-    // if (rank == size - 1) {
-    //     for (i2 = 0; i2 < n; i2++) {
-    //         X[local_rows - 1][i2] = X[local_rows - 1][i2] / B[local_rows - 1][i2];
-    //     }
-    // }
-
-    // // Обратная подстановка для вертикальных обновлений с обменом данными
-    // for (i1 = 0; i1 < n - 2; i1++) {
-    //     int idx = n - i1 - 2;
-
-    //     // Если это не первый процесс, получаем данные от предыдущего процесса
-    //     if (rank != 0 && idx == start_i1) {
-    //         printf("Rank %d: Receiving data from rank %d\n", rank, rank - 1);
-    //         MPI_Recv(X[idx - start_i1 - 1], n, MPI_DOUBLE, rank - 1, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-    //         MPI_Recv(B[idx - start_i1 - 1], n, MPI_DOUBLE, rank - 1, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-    //     }
-
-    //     for (i2 = 0; i2 < n; i2++) {
-    //         X[idx - start_i1][i2] = (X[idx - start_i1][i2] - X[idx - start_i1 - 1][i2] * A[idx - start_i1 - 1][i2]) / B[idx - start_i1][i2];
-    //     }
-
-    //     // Если это не последний процесс, отправляем данные следующему процессу
-    //     if (rank != size - 1 && idx == end_i1 - 1) {
-    //         printf("Rank %d: Sending data to rank %d\n", rank, rank + 1);
-    //         MPI_Send(X[idx - start_i1], n, MPI_DOUBLE, rank + 1, 0, MPI_COMM_WORLD);
-    //         MPI_Send(B[idx - start_i1], n, MPI_DOUBLE, rank + 1, 1, MPI_COMM_WORLD);
-    //     }
-    //}
-    // }
-}
+    free(top_X);
+    free(top_A);
+    free(top_B);
 }
 
 int main(int argc, char **argv)
@@ -252,8 +277,8 @@ int main(int argc, char **argv)
         printf("Total execution time: %f seconds\n", time);
     }
 
-    print_row(30);
-    
+    print_row(31);
+
     // print_array(n, X, rank, size);
 
     for (int i = 0; i < local_rows; i++)
