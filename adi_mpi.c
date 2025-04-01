@@ -4,6 +4,7 @@
 #include <sys/time.h>
 #include <mpi.h>
 
+
 #include "adi.h"
 
 double second();
@@ -12,8 +13,8 @@ DATA_TYPE **X;
 DATA_TYPE **A;
 DATA_TYPE **B;
 int local_rows;
-int num_quanta = 1;
-int quantum_size;
+int num_quanta = 1;// количество квантов 
+int quantum_size;// количество элементов на 1 кванте
 
 // Функция инициализации массивов X, A и B
 static void init_arrays()
@@ -106,11 +107,12 @@ static void print_array(int n, DATA_TYPE **X, int rank, int size)
 static void kernel_adi(int tsteps, int n, DATA_TYPE **X, DATA_TYPE **A, DATA_TYPE **B, int rank, int size, int local_rows)
 {
     int t, i1, i2, q;
-    DATA_TYPE *quantum_X = (DATA_TYPE *)malloc(quantum_size * sizeof(DATA_TYPE));
+    DATA_TYPE *quantum_X = (DATA_TYPE *)malloc(quantum_size * sizeof(DATA_TYPE));//буфер для передачи кванта
     DATA_TYPE *quantum_B = (DATA_TYPE *)malloc(quantum_size * sizeof(DATA_TYPE));
-    DATA_TYPE *temp_X = (DATA_TYPE *)malloc(N * sizeof(DATA_TYPE));
+    DATA_TYPE *temp_X = (DATA_TYPE *)malloc(N * sizeof(DATA_TYPE));// буфер для паредачи полной строки
     DATA_TYPE *temp_A = (DATA_TYPE *)malloc(N * sizeof(DATA_TYPE));
-    MPI_Status status;
+    MPI_Status statuses[2];
+    MPI_Request requests[2];
 
     for (t = 0; t < tsteps; t++)
     {
@@ -122,7 +124,7 @@ static void kernel_adi(int tsteps, int n, DATA_TYPE **X, DATA_TYPE **A, DATA_TYP
                 X[i1][i2] = X[i1][i2] - X[i1][i2 - 1] * A[i1][i2] / B[i1][i2 - 1];
                 B[i1][i2] = B[i1][i2] - A[i1][i2] * A[i1][i2] / B[i1][i2 - 1];
             }
-
+            // Обновление X[i1][n-1] для локальных строк
             X[i1][n - 1] = X[i1][n - 1] / B[i1][n - 1];
         }
 
@@ -139,16 +141,17 @@ static void kernel_adi(int tsteps, int n, DATA_TYPE **X, DATA_TYPE **A, DATA_TYP
         // Вертикальные обновления с конвейерной обработкой
         for (q = 0; q < num_quanta; q++)
         {
-            int start = q * quantum_size;
-            int end = start + quantum_size;
+            int start = q * quantum_size;// с какого элемента начинается данный квант
+            int end = start + quantum_size;// на каком элементе заканчивается данный квант
 
-            end = (end > N) ? N : end;
+            end = (end > N) ? N : end;// ограничение квантов
 
             // Получение данных от предыдущего процесса
             if (rank > 0)
             {
-                MPI_Recv(quantum_X, quantum_size, MPI_DOUBLE, rank - 1, 0, MPI_COMM_WORLD, &status);
-                MPI_Recv(quantum_B, quantum_size, MPI_DOUBLE, rank - 1, 1, MPI_COMM_WORLD, &status);
+                MPI_Irecv(quantum_X, quantum_size, MPI_DOUBLE, rank - 1, 0, MPI_COMM_WORLD, &requests[0]);
+                MPI_Irecv(quantum_B, quantum_size, MPI_DOUBLE, rank - 1, 1, MPI_COMM_WORLD, &requests[1]);
+                MPI_Waitall(2, requests, statuses);
             }
 
             // Обработка текущего кванта
@@ -183,8 +186,9 @@ static void kernel_adi(int tsteps, int n, DATA_TYPE **X, DATA_TYPE **A, DATA_TYP
                     quantum_X[i2 - start] = X[local_rows - 1][i2];
                     quantum_B[i2 - start] = B[local_rows - 1][i2];
                 }
-                MPI_Send(quantum_X, quantum_size, MPI_DOUBLE, rank + 1, 0, MPI_COMM_WORLD);
-                MPI_Send(quantum_B, quantum_size, MPI_DOUBLE, rank + 1, 1, MPI_COMM_WORLD);
+                MPI_Isend(quantum_X, quantum_size, MPI_DOUBLE, rank + 1, 0, MPI_COMM_WORLD, &requests[0]);
+                MPI_Isend(quantum_B, quantum_size, MPI_DOUBLE, rank + 1, 1, MPI_COMM_WORLD, &requests[1]);
+                MPI_Waitall(2, requests, statuses);
             }
         }
 
@@ -200,16 +204,18 @@ static void kernel_adi(int tsteps, int n, DATA_TYPE **X, DATA_TYPE **A, DATA_TYP
         // Обратная подстановка для вертикальных обновлений с обменом данными
         if (size > 1 && rank > 0)
         {
-            MPI_Recv(temp_X, n, MPI_DOUBLE, rank - 1, 2, MPI_COMM_WORLD, &status);
-            MPI_Recv(temp_A, n, MPI_DOUBLE, rank - 1, 3, MPI_COMM_WORLD, &status);
+            MPI_Irecv(temp_X, n, MPI_DOUBLE, rank - 1, 2, MPI_COMM_WORLD, &requests[0]);
+            MPI_Irecv(temp_A, n, MPI_DOUBLE, rank - 1, 3, MPI_COMM_WORLD, &requests[1]);
+            MPI_Waitall(2, requests, statuses);
         }
 
         for (i1 = local_rows - 1; i1 >= 0; i1--)
         {
-            if (i1 == (local_rows - 1) && size > 1 && rank < size - 1)
+            if (i1 == (local_rows - 1) && rank < size - 1)
             {
-                MPI_Send(X[local_rows - 1], n, MPI_DOUBLE, rank + 1, 2, MPI_COMM_WORLD);
-                MPI_Send(A[local_rows - 1], n, MPI_DOUBLE, rank + 1, 3, MPI_COMM_WORLD);
+                MPI_Isend(X[local_rows - 1], n, MPI_DOUBLE, rank + 1, 2, MPI_COMM_WORLD, &requests[0]);
+                MPI_Isend(A[local_rows - 1], n, MPI_DOUBLE, rank + 1, 3, MPI_COMM_WORLD, &requests[1]);
+                MPI_Waitall(2, requests, statuses);
             }
 
             if (i1 == 0)
@@ -257,8 +263,8 @@ int main(int argc, char **argv)
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
 
-    local_rows = (N / size) + (rank < (N % size) ? 1 : 0);
-    quantum_size = (N / num_quanta) + ((N % num_quanta > 0) ? 1 : 0);
+    local_rows = (N / size) + (rank < (N % size) ? 1 : 0);// количество элементов на 1 процессе
+    quantum_size = (N / num_quanta) + ((N % num_quanta > 0) ? 1 : 0);//количество элементов на 1 кванте
 
     init_arrays();
 
@@ -275,7 +281,7 @@ int main(int argc, char **argv)
         printf("\nTotal execution time: %f seconds\n", time1 - time0);
     }
 
-    print_row(31);
+    // print_row(31);
 
     free_arrays();
 
